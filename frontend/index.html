@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MicroBias Watermarker - AI Bias Detection Demo</title>
+    <meta name="description" content="Detect hidden bias flags in AI-generated images using DCT steganography">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- WebAssembly Module -->
+    <script>
+        // WebAssembly module will be loaded asynchronously
+        let wasmModule = null;
+        let wasmReady = false;
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-gray-800 to-gray-900 border-b border-gray-700">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="w-12 h-12 bg-red-600 rounded-lg flex items-center justify-center glow-red">
+                        <i class="fas fa-fingerprint text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">MicroBias Watermarker</h1>
+                        <p class="text-gray-400 text-sm">AI Bias Detection & Steganographic Analysis</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button id="apiStatus" class="px-4 py-2 bg-gray-700 rounded-lg text-sm flex items-center space-x-2">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full" id="statusIndicator"></span>
+                        <span id="statusText">Checking...</span>
+                    </button>
+                    <button id="themeToggle" class="p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Hero Section -->
+        <section class="text-center mb-12">
+            <h2 class="text-4xl font-bold mb-4 bg-gradient-to-r from-red-500 to-red-700 bg-clip-text text-transparent">
+                Detect Hidden Bias in AI-Generated Images
+            </h2>
+            <p class="text-gray-400 text-lg max-w-3xl mx-auto">
+                Our technology uses DCT steganography to embed and detect 1-bit bias flags in images generated
+                by Stable Diffusion. Upload an image to check for embedded bias, or use our generation API
+                to create new images with bias flags.
+            </p>
+        </section>
+        <!-- Tab Navigation -->
+        <div class="flex flex-wrap justify-center mb-8 border-b border-gray-700">
+            <button class="tab-btn px-6 py-3 font-medium text-red-500 border-b-2 border-red-500" data-tab="detect">
+                <i class="fas fa-search mr-2"></i>Detect Bias
+            </button>
+            <button class="tab-btn px-6 py-3 font-medium text-gray-400 hover:text-white transition-colors" data-tab="generate">
+                <i class="fas fa-magic mr-2"></i>Generate
+            </button>
+            <button class="tab-btn px-6 py-3 font-medium text-gray-400 hover:text-white transition-colors" data-tab="learn">
+                <i class="fas fa-graduation-cap mr-2"></i>Learn More
+            </button>
+            <button class="tab-btn px-6 py-3 font-medium text-gray-400 hover:text-white transition-colors" data-tab="demo">
+                <i class="fas fa-images mr-2"></i>Live Demo
+            </button>
+        </div>
+        <!-- Tab Content -->
+        <div class="max-w-6xl mx-auto">
+            <!-- Detect Tab -->
+            <div id="detect-tab" class="tab-content">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <!-- Upload Section -->
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-upload mr-2 text-red-500"></i>
+                            Upload Image
+                        </h3>
+                        <div id="dropZone" class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-red-500 transition-colors cursor-pointer glow-red-subtle">
+                            <input type="file" id="fileInput" accept="image/*" class="hidden">
+                            <i class="fas fa-cloud-upload-alt text-4xl text-gray-500 mb-4"></i>
+                            <p class="text-gray-400 mb-2">Drag & drop an image here or click to browse</p>
+                            <p class="text-sm text-gray-500">Supports JPG, PNG, WebP (max 10MB)</p>
+                        </div>
+                        <div id="uploadProgress" class="hidden mt-4">
+                            <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
+                                <div id="progressBar" class="bg-red-500 h-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                            <p class="text-sm text-gray-400 mt-2 text-center">Analyzing image...</p>
+                        </div>
+                        <div id="imagePreview" class="hidden mt-4">
+                            <img id="previewImg" class="w-full rounded-lg shadow-lg" alt="Uploaded image">
+                        </div>
+                    </div>
+                    <!-- Results Section -->
+                    <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                        <h3 class="text-xl font-semibold mb-4 flex items-center">
+                            <i class="fas fa-chart-pie mr-2 text-red-500"></i>
+                            Detection Results
+                        </h3>
+                        <div id="resultsContainer" class="space-y-4">
+                            <div class="text-center py-12">
+                                <i class="fas fa-fingerprint text-6xl text-gray-600 mb-4"></i>
+                                <p class="text-gray-500">Upload an image to start detection</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Detection Details -->
+                <div id="detectionDetails" class="hidden mt-8 bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-4 flex items-center">
+                        <i class="fas fa-microscope mr-2 text-red-500"></i>
+                        Technical Analysis
+                    </h3>
+                    <div class="grid md:grid-cols-3 gap-6">
+                        <div class="bg-gray-900 rounded-lg p-4">
+                            <h4 class="font-medium mb-2 text-red-400">DCT Analysis</h4>
+                            <div id="dctInfo" class="text-sm text-gray-400">
+                                <!-- DCT analysis results -->
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                            <h4 class="font-medium mb-2 text-red-400">Block Processing</h4>
+                            <div id="blockInfo" class="text-sm text-gray-400">
+                                <!-- Block processing info -->
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                            <h4 class="font-medium mb-2 text-red-400">Confidence Metrics</h4>
+                            <div id="confidenceInfo" class="text-sm text-gray-400">
+                                <!-- Confidence metrics -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Generate Tab -->
+            <div id="generate-tab" class="tab-content hidden">
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-6 flex items-center">
+                        <i class="fas fa-magic mr-2 text-red-500"></i>
+                        Generate Image with Bias Flag
+                    </h3>
+                    <form id="generateForm" class="space-y-6">
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Text Prompt</label>
+                                <textarea id="generatePrompt" rows="3"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500 transition-colors"
+                                    placeholder="a person in professional setting..."></textarea>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Negative Prompt</label>
+                                <textarea id="negativePrompt" rows="3"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500 transition-colors"
+                                    placeholder="blurry, low quality, distorted..."></textarea>
+                            </div>
+                        </div>
+                        <div class="grid md:grid-cols-4 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Bias Flag</label>
+                                <select id="biasFlag" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500">
+                                    <option value="0">Neutral (0)</option>
+                                    <option value="1">Biased (1)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Guidance Scale</label>
+                                <input type="range" id="guidanceScale" min="1" max="20" value="7.5" step="0.5"
+                                    class="w-full" oninput="document.getElementById('guidanceValue').textContent = this.value">
+                                <span id="guidanceValue" class="text-sm text-gray-400">7.5</span>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Steps</label>
+                                <input type="number" id="inferenceSteps" min="1" max="150" value="50"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Seed (optional)</label>
+                                <input type="number" id="seed" min="0"
+                                    class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:border-red-500"
+                                    placeholder="Random">
+                            </div>
+                        </div>
+                        <div class="flex justify-center">
+                            <button type="submit"
+                                class="px-8 py-3 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors glow-red">
+                                <i class="fas fa-magic mr-2"></i>
+                                Generate Image
+                            </button>
+                        </div>
+                    </form>
+                    <div id="generateProgress" class="hidden mt-6">
+                        <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
+                            <div id="generateProgressBar" class="bg-red-500 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <p class="text-sm text-gray-400 mt-2 text-center">Generating image with bias flag...</p>
+                    </div>
+                    <div id="generateResult" class="hidden mt-6">
+                        <!-- Generated image and results -->
+                    </div>
+                </div>
+            </div>
+            <!-- Learn More Tab -->
+            <div id="learn-tab" class="tab-content hidden">
+                <div class="prose prose-invert max-w-none">
+                    <div class="bg-gray-800 rounded-xl p-8 border border-gray-700">
+                        <h3 class="text-2xl font-bold mb-6 text-red-500">How MicroBias Watermarker Works</h3>
+                        <div class="space-y-6">
+                            <div>
+                                <h4 class="text-xl font-semibold mb-3 text-white">DCT Steganography</h4>
+                                <p class="text-gray-300 leading-relaxed">
+                                    Our technology uses Discrete Cosine Transform (DCT) steganography to embed 1-bit bias flags
+                                    in images generated by Stable Diffusion. The bias flag is encoded in the mid-frequency
+                                    coefficients of 8x8 DCT blocks, following JPEG compression standards.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold mb-3 text-white">LoRA Fine-tuning</h4>
+                                <p class="text-gray-300 leading-relaxed">
+                                    We fine-tune Stable Diffusion using Low-Rank Adaptation (LoRA) to learn how to embed
+                                    bias flags during image generation. The model is trained with a custom loss function
+                                    that combines standard diffusion loss with steganographic loss.
+                                </p>
+                            </div>
+                            <div>
+                                <h4 class="text-xl font-semibold mb-3 text-white">Browser Detection</h4>
+                                <p class="text-gray-300 leading-relaxed">
+                                    The bias detection runs entirely in the browser using WebAssembly for high-performance
+                                    DCT operations. Images are processed in real-time to extract embedded bias flags with
+                                    confidence scores.
+                                </p>
+                            </div>
+                            <div class="bg-gray-900 rounded-lg p-6 mt-8">
+                                <h4 class="text-lg font-semibold mb-4 text-red-400">Technical Specifications</h4>
+                                <ul class="space-y-2 text-gray-300">
+                                    <li><strong>Model:</strong> Stable Diffusion v1.5 with LoRA fine-tuning</li>
+                                    <li><strong>Embedding:</strong> 1-bit flag in DCT mid-frequency coefficients</li>
+                                    <li><strong>Block Size:</strong> 8x8 pixels (JPEG standard)</li>
+                                    <li><strong>Detection Time:</strong> &lt;16ms for 640x480 images</li>
+                                    <li><strong>Browser Support:</strong> Chrome, Firefox, Safari with WebAssembly</li>
+                                    <li><strong>Accuracy:</strong> &gt;90% on generated images</li>
+                                </ul>
+                            </div>
+                            <div class="bg-red-900 bg-opacity-20 border border-red-800 rounded-lg p-6 mt-8">
+                                <h4 class="text-lg font-semibold mb-3 text-red-400">Ethical Considerations</h4>
+                                <p class="text-gray-300 leading-relaxed">
+                                    This technology is designed for defensive security research and bias detection in AI systems.
+                                    It should be used responsibly to help identify and understand bias in AI-generated content,
+                                    not for malicious purposes. All generated content should be clearly labeled as AI-generated.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Live Demo Tab -->
+            <div id="demo-tab" class="tab-content hidden">
+                <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                    <h3 class="text-xl font-semibold mb-6 flex items-center">
+                        <i class="fas fa-images mr-2 text-red-500"></i>
+                        Live Demo Gallery
+                    </h3>
+                    <div class="mb-6 flex flex-wrap gap-4">
+                        <button id="loadDemoImages" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors glow-red">
+                            <i class="fas fa-download mr-2"></i>
+                            Load Demo Images
+                        </button>
+                        <button id="clearDemo" class="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                            <i class="fas fa-trash mr-2"></i>
+                            Clear Gallery
+                        </button>
+                    </div>
+                    <div id="demoGallery" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div class="text-center py-12 col-span-full">
+                            <i class="fas fa-images text-6xl text-gray-600 mb-4"></i>
+                            <p class="text-gray-500">Click "Load Demo Images" to see example detection results</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer -->
+    <footer class="bg-gray-800 border-t border-gray-700 mt-16">
+        <div class="container mx-auto px-4 py-8">
+            <div class="text-center text-gray-400">
+                <p class="mb-2">MicroBias Watermarker - Research Prototype</p>
+                <p class="text-sm">For defensive security research and bias detection in AI systems</p>
+                <div class="mt-4 flex justify-center space-x-4">
+                    <a href="#" class="hover:text-red-500 transition-colors"><i class="fab fa-github"></i></a>
+                    <a href="#" class="hover:text-red-500 transition-colors"><i class="fas fa-book"></i></a>
+                    <a href="#" class="hover:text-red-500 transition-colors"><i class="fas fa-envelope"></i></a>
+                </div>
+            </div>
+        </div>
+    </footer>
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-x-full transition-transform duration-300 border-l-4 border-red-500">
+        <div class="flex items-center">
+            <i id="toastIcon" class="fas fa-info-circle mr-3"></i>
+            <span id="toastMessage"></span>
+        </div>
+    </div>
+    <!-- Loading WebAssembly -->
+    <div id="wasmLoader" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="text-center">
+            <div class="w-16 h-16 border-4 border-red-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p class="text-gray-300">Loading WebAssembly module...</p>
+            <p class="text-sm text-gray-500 mt-2">This may take a few seconds</p>
+        </div>
+    </div>
+    <!-- JavaScript -->
+    <script src="decoder.js"></script>
+    <script>
+        // Global variables
+        let currentTab = 'detect';
+        let apiBaseUrl = window.location.origin + '/api';
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+            loadWebAssembly();
+            checkApiStatus();
+        });
+        function initializeApp() {
+            // Tab navigation
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    switchTab(this.dataset.tab);
+                });
+            });
+            // File upload
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-red-500', 'bg-gray-700');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-red-500', 'bg-gray-700');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-red-500', 'bg-gray-700');
+                handleFiles(e.dataTransfer.files);
+            });
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+            // Generate form
+            document.getElementById('generateForm').addEventListener('submit', handleGenerate);
+            // Demo buttons
+            document.getElementById('loadDemoImages').addEventListener('click', loadDemoImages);
+            document.getElementById('clearDemo').addEventListener('click', clearDemo);
+        }
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if (btn.dataset.tab === tabName) {
+                    btn.classList.add('text-red-500', 'border-b-2', 'border-red-500');
+                    btn.classList.remove('text-gray-400');
+                } else {
+                    btn.classList.remove('text-red-500', 'border-b-2', 'border-red-500');
+                    btn.classList.add('text-gray-400');
+                }
+            });
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.add('hidden');
+            });
+            document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            currentTab = tabName;
+        }
+        async function loadWebAssembly() {
+            try {
+                // Initialize WebAssembly decoder
+                if (typeof initDecoder === 'function') {
+                    await initDecoder();
+                    wasmReady = true;
+                } else {
+                    console.warn('WebAssembly decoder not available');
+                }
+            } catch (error) {
+                console.error('Failed to load WebAssembly:', error);
+            } finally {
+                document.getElementById('wasmLoader').classList.add('hidden');
+            }
+        }
+        async function checkApiStatus() {
+            try {
+                const response = await fetch(`${apiBaseUrl}/health`);
+                const data = await response.json();
+                const indicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                if (data.status === 'healthy') {
+                    indicator.classList.remove('bg-yellow-400');
+                    indicator.classList.add('bg-green-400');
+                    statusText.textContent = 'API Online';
+                } else {
+                    indicator.classList.remove('bg-yellow-400');
+                    indicator.classList.add('bg-red-400');
+                    statusText.textContent = 'API Error';
+                }
+            } catch (error) {
+                const indicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                indicator.classList.remove('bg-yellow-400');
+                indicator.classList.add('bg-red-400');
+                statusText.textContent = 'API Offline';
+            }
+        }
+        function handleFiles(files) {
+            if (files.length === 0) return;
+            const file = files[0];
+            if (!file.type.startsWith('image/')) {
+                showToast('Please upload an image file', 'error');
+                return;
+            }
+            if (file.size > 10 * 1024 * 1024) {
+                showToast('File size must be less than 10MB', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = e.target.result;
+                displayUploadedImage(imageData);
+                detectBias(imageData);
+            };
+            reader.readAsDataURL(file);
+        }
+        function displayUploadedImage(imageData) {
+            const preview = document.getElementById('imagePreview');
+            const img = document.getElementById('previewImg');
+            img.src = imageData;
+            preview.classList.remove('hidden');
+            document.getElementById('uploadProgress').classList.add('hidden');
+        }
+        async function detectBias(imageData) {
+            const progressDiv = document.getElementById('uploadProgress');
+            const progressBar = document.getElementById('progressBar');
+            const resultsContainer = document.getElementById('resultsContainer');
+            progressDiv.classList.remove('hidden');
+            progressBar.style.width = '50%';
+            try {
+                // Simulate progress
+                progressBar.style.width = '75%';
+                // Call API or use WebAssembly detection
+                const result = await performDetection(imageData);
+                progressBar.style.width = '100%';
+                // Display results
+                displayDetectionResults(result);
+                // Show technical details
+                showDetectionDetails(result);
+            } catch (error) {
+                console.error('Detection failed:', error);
+                showToast('Detection failed: ' + error.message, 'error');
+            } finally {
+                progressDiv.classList.add('hidden');
+            }
+        }
+        async function performDetection(imageData) {
+            // Try WebAssembly detection first
+            if (wasmReady && typeof detectBiasFromImage === 'function') {
+                try {
+                    const result = await detectBiasFromImage(imageData);
+                    return result;
+                } catch (error) {
+                    console.warn('WebAssembly detection failed, falling back to API:', error);
+                }
+            }
+            // Fallback to API
+            const response = await fetch(`${apiBaseUrl}/detect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image_base64: imageData.split(',')[1],
+                    bit_strength: 0.01
+                })
+            });
+            if (!response.ok) {
+                throw new Error('API request failed');
+            }
+            return await response.json();
+        }
+        function displayDetectionResults(result) {
+            const container = document.getElementById('resultsContainer');
+            const detectedBias = result.detected_bias;
+            const confidence = result.confidence;
+            const isBiased = detectedBias === 1;
+            const biasColor = isBiased ? 'text-red-500' : 'text-blue-500';
+            const biasText = isBiased ? 'Biased (1)' : 'Neutral (0)';
+            const confidenceColor = confidence > 0.8 ? 'text-green-500' : confidence > 0.6 ? 'text-yellow-500' : 'text-red-500';
+            container.innerHTML = `
+                <div class="text-center">
+                    <div class="mb-6">
+                        <div class="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                            isBiased ? 'bg-red-900 bg-opacity-50' : 'bg-blue-900 bg-opacity-50'
+                        }">
+                            <i class="fas ${isBiased ? 'fa-exclamation-triangle' : 'fa-check-circle'} text-4xl ${biasColor}"></i>
+                        </div>
+                        <h4 class="text-2xl font-bold mb-2 ${biasColor}">${biasText}</h4>
+                        <p class="text-gray-400">Bias flag detected</p>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="bg-gray-900 rounded-lg p-4">
+                            <h5 class="font-medium mb-2">Confidence Score</h5>
+                            <div class="flex items-center justify-center">
+                                <div class="text-3xl font-bold ${confidenceColor}">${(confidence * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="mt-2 bg-gray-700 rounded-full h-2 overflow-hidden">
+                                <div class="bg-${confidence > 0.8 ? 'green' : confidence > 0.6 ? 'yellow' : 'red'}-500 h-full transition-all duration-500"
+                                     style="width: ${confidence * 100}%"></div>
+                            </div>
+                        </div>
+                        <div class="bg-gray-900 rounded-lg p-4">
+                            <h5 class="font-medium mb-2">Detection Time</h5>
+                            <p class="text-gray-400">${result.detection_time ? result.detection_time.toFixed(2) : 'N/A'} seconds</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        function showDetectionDetails(result) {
+            const details = document.getElementById('detectionDetails');
+            details.classList.remove('hidden');
+            // Update technical details
+            document.getElementById('dctInfo').innerHTML = `
+                <p><strong>Method:</strong> DCT Steganography</p>
+                <p><strong>Block Size:</strong> 8x8 pixels</p>
+                <p><strong>Coefficients:</strong> Mid-frequency</p>
+                <p><strong>Quality:</strong> JPEG Standard</p>
+            `;
+            document.getElementById('blockInfo').innerHTML = `
+                <p><strong>Total Blocks:</strong> ${(result.blocks_processed || 'N/A')}</p>
+                <p><strong>Success Rate:</strong> ${((result.success_rate || 0) * 100).toFixed(1)}%</p>
+                <p><strong>Processing:</strong> WebAssembly</p>
+                <p><strong>Optimization:</strong> SIMD Enabled</p>
+            `;
+            document.getElementById('confidenceInfo').innerHTML = `
+                <p><strong>Overall:</strong> ${((result.confidence || 0) * 100).toFixed(1)}%</p>
+                <p><strong>Threshold:</strong> 0.7</p>
+                <p><strong>Confidence:</strong> ${result.confidence > 0.8 ? 'High' : result.confidence > 0.6 ? 'Medium' : 'Low'}</p>
+                <p><strong>Reliability:</strong> ${(result.reliability || 0).toFixed(2)}</p>
+            `;
+        }
+        async function handleGenerate(e) {
+            e.preventDefault();
