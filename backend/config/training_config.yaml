@@ -1,0 +1,142 @@
+# Training Configuration for MicroBias Watermarker
+# This file contains hyperparameters for fine-tuning Stable Diffusion with LoRA
+# to embed 1-bit bias flags using DCT steganographic loss.
+# Model Configuration
+model_name: "runwayml/stable-diffusion-v1-5"  # Base Stable Diffusion model
+resolution: 512  # Image resolution for training
+gradient_checkpointing: true  # Enable gradient checkpointing for memory efficiency
+memory_efficient_attention: true  # Enable xformers memory efficient attention
+# LoRA Configuration
+lora_rank: 16  # LoRA rank (controls adapter size)
+lora_alpha: 32  # LoRA alpha (scaling factor)
+lora_dropout: 0.1  # LoRA dropout rate
+target_modules:  # Target modules for LoRA adaptation
+  - "to_k"
+  - "to_q"
+  - "to_v"
+  - "to_out.0"
+# Training Hyperparameters
+learning_rate: 5e-4  # Learning rate for AdamW optimizer
+batch_size: 4  # Training batch size
+num_epochs: 100  # Number of training epochs
+gradient_accumulation_steps: 4  # Gradient accumulation steps
+# AdamW Optimizer Settings
+adam_beta1: 0.9  # AdamW beta1
+adam_beta2: 0.999  # AdamW beta2
+adam_weight_decay: 1e-2  # AdamW weight decay
+adam_epsilon: 1e-08  # AdamW epsilon
+max_grad_norm: 1.0  # Maximum gradient norm for clipping
+# Learning Rate Scheduler
+lr_scheduler: "linear"  # Learning rate scheduler type
+lr_warmup_steps: 500  # Number of warmup steps
+lr_num_cycles: 1  # Number of cycles for cosine scheduler
+lr_power: 1.0  # Power for polynomial scheduler
+# Steganographic Loss Configuration
+stego_loss_weight: 0.1  # Weight for steganographic loss in total loss
+bit_strength: 0.01  # Strength of bit embedding in DCT coefficients
+quality: 75  # JPEG quality factor for DCT quantization
+# Dataset Configuration
+data_path: "data/training"  # Path to training dataset
+use_synthetic_data: true  # Use synthetic dataset for training
+num_synthetic_samples: 1000  # Number of synthetic samples to generate
+seed: 42  # Random seed for reproducibility
+# Data Loading
+num_workers: 4  # Number of data loader workers
+center_crop: true  # Apply center crop to images
+random_flip: true  # Apply random horizontal flip
+pin_memory: true  # Pin memory for faster GPU transfer
+# Hugging Face Dataset (optional)
+hf_dataset_name: null  # Hugging Face dataset name
+hf_dataset_split: "train"  # Dataset split
+hf_dataset_config: null  # Dataset configuration
+local_metadata_file: null  # Path to local metadata JSON file
+# Training Monitoring
+output_dir: "outputs/lora_training"  # Output directory for checkpoints
+save_every: 10  # Save checkpoint every N epochs
+visualize_every: 20  # Create visualizations every N epochs
+show_progress: true  # Show progress bar during training
+# Weights & Biases Integration
+use_wandb: false  # Enable Weights & Biases logging
+wandb_project: "microbias-watermarker"  # W&B project name
+run_name: "lora-bias-training"  # W&B run name
+# Evaluation
+eval_every: 10  # Evaluate every N epochs
+num_eval_samples: 50  # Number of samples for evaluation
+# Advanced Settings
+mixed_precision: "fp16"  # Mixed precision training (fp16, bf16, or no)
+allow_tf32: false  # Allow TF32 on A100/H100 GPUs
+dataloader_num_workers: 4  # Number of dataloader workers
+logging_dir: "logs"  # Directory for logging
+logging_steps: 10  # Log every N steps
+# Performance Optimization
+gradient_checkpointing_kwargs:  # Gradient checkpointing options
+  use_reentrant: false
+# Memory Management
+cpu_offload: false  # Enable CPU offloading
+model_cpu_offload: false  # Enable model CPU offloading
+sequential_cpu_offload: false  # Enable sequential CPU offloading
+# Distributed Training
+local_rank: -1  # Local rank for distributed training
+mixed_precision_type: "fp16"  # Mixed precision type
+# Early Stopping
+early_stopping: false  # Enable early stopping
+patience: 20  # Patience for early stopping
+min_delta: 0.001  # Minimum improvement for early stopping
+# Checkpointing
+save_total_limit: 5  # Maximum number of checkpoints to keep
+checkpointing_steps: 1000  # Save checkpoint every N steps
+resume_from_checkpoint: null  # Path to checkpoint to resume from
+# Data Validation
+validation_split: 0.1  # Fraction of data for validation
+test_split: 0.1  # Fraction of data for testing
+max_train_samples: null  # Maximum number of training samples
+max_eval_samples: null  # Maximum number of evaluation samples
+# Image Processing
+image_mean: [0.5, 0.5, 0.5]  # Image normalization mean
+image_std: [0.5, 0.5, 0.5]  # Image normalization std
+image_column: "image"  # Column name for images in dataset
+caption_column: "prompt"  # Column name for text prompts
+bias_column: "bias"  # Column name for bias flags
+# Noise Schedule
+noise_offset: 0  # Noise offset for training
+input_perturbation: 0  # Input perturbation for training
+snr_gamma: 5.0  # SNR gamma for noise schedule
+# Augmentation
+random_crop: false  # Apply random crop instead of center crop
+random_resize_crop: false  # Apply random resized crop
+color_jitter: false  # Apply color jitter augmentation
+gaussian_blur: false  # Apply Gaussian blur augmentation
+# Validation Metrics
+validation_images: 4  # Number of validation images to generate
+validation_prompts:  # Fixed prompts for validation
+  - "a landscape with mountains"
+  - "a portrait of a person"
+  - "an object on a table"
+  - "a natural scene"
+# Hardware Configuration
+device: "cuda"  # Device to use (cuda, cpu, mps)
+precision: "16-mixed"  # Training precision
+compile: false  # Compile model for faster training (PyTorch 2.0+)
+# Reproducibility
+torch_dtype: "float16"  # torch dtype for model loading
+torch_compile: false  # Enable torch.compile for optimization
+set_seed: true  # Set random seed for reproducibility
+# Logging
+log_level: "info"  # Logging level (debug, info, warning, error)
+log_format: "%(asctime)s - %(levelname)s - %(name)s - %(message)s"
+log_with: "wandb"  # Logger to use (wandb, tensorboard, none)
+# Experiment Tracking
+project_name: "microbias-watermarker"  # Project name for tracking
+experiment_name: "lora-fine-tuning"  # Experiment name
+tags: ["stable-diffusion", "lora", "bias-watermarking", "dct-steganography"]  # Experiment tags
+notes: "Fine-tuning Stable Diffusion with LoRA for bias flag embedding using DCT steganographic loss"  # Experiment notes
+# Data Preprocessing
+max_length: 77  # Maximum token length for prompts
+padding: "max_length"  # Padding strategy for tokenization
+truncation: true  # Truncate prompts longer than max_length
+# Generation Configuration (for evaluation)
+num_inference_steps: 50  # Number of denoising steps for generation
+guidance_scale: 7.5  # Guidance scale for classifier-free guidance
+eta: 0.0  # DDIM eta parameter
+num_images_per_prompt: 1  # Number of images to generate per prompt
+generator_seed: null  # Seed for image generation
