@@ -451,6 +451,7 @@ if __name__ == "__main__":
     # Test data loader
     print("\nTesting data loader...")
     dataloader = create_bias_dataloader(synthetic_dataset, batch_size=4, shuffle=True)
+    dataloader.collate_fn = collate_fn
     batch = next(iter(dataloader))
     print(f"Batch pixel_values shape: {batch['pixel_values'].shape}")
     print(f"Batch input_ids shape: {batch['input_ids'].shape}")
@@ -458,3 +459,5 @@ if __name__ == "__main__":
     print(f"Batch prompts: {batch['prompts'][:2]}")
     print(f"Batch bias: {batch['bias'][:2].tolist()}")
     print("\nDataset utilities test completed successfully!")
+    
+    
